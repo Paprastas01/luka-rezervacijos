@@ -9,7 +9,7 @@
   var T = {
     appName: 'Luka rezervacijos',
     tabs: { list: 'Sąrašas', book: 'Nauja', remind: 'Priminimai', more: 'Nustatymai' },
-    today: 'Šiandien', tomorrow: 'Rytoj', otherDate: 'Kita data',
+    today: 'Šiandien', tomorrow: 'Rytoj', otherDate: 'Kita data', back: 'Atgal',
     loading: 'Kraunama…',
     network: 'Nėra ryšio su sąrašu. Patikrinkite internetą ir bandykite dar kartą.',
     error: 'Nepavyko. Bandykite dar kartą.',
@@ -111,8 +111,67 @@
     logoutQ: 'Atsijungti šiame telefone?',
     logoutText: 'Norint vėl prisijungti, reikės naujo kodo iš vadovo.',
     logoutYes: 'Atsijungti',
-    managerOnly: 'Tai gali tik vadovas.'
+    managerOnly: 'Tai gali tik vadovas.',
+    // day navigation and calendar
+    prevDay: 'Ankstesnė diena', nextDay: 'Kita diena',
+    calTitle: 'Pasirinkite datą',
+    prevMonth: 'Ankstesnis mėnuo', nextMonth: 'Kitas mėnuo',
+    calClosed: 'Pilkos dienos: restoranas nedirba.',
+    months: ['sausis', 'vasaris', 'kovas', 'balandis', 'gegužė', 'birželis', 'liepa', 'rugpjūtis', 'rugsėjis', 'spalis', 'lapkritis', 'gruodis'],
+    // search
+    searchPh: 'Ieškoti pagal vardą ar telefoną',
+    searchLabel: 'Paieška',
+    searchNone: 'Nieko nerasta.',
+    searchMore: 'Rodomos 30 rezervacijų. Patikslinkite paiešką.',
+    // arrival
+    arrived: 'Atvyko', noShow: 'Neatvyko', unmark: 'Nuimti žymą',
+    tagArrived: 'atvyko', tagNoShow: 'neatvyko',
+    marks: function (a, n) { return [a ? 'atvyko ' + a : '', n ? 'neatvyko ' + n : ''].filter(Boolean).join(' · '); },
+    future: 'Atvykimą galima žymėti tik rezervacijos dieną arba vėliau.',
+    // edit
+    edit: 'Keisti',
+    editTitle: 'Keisti rezervaciją',
+    saveEdit: 'Išsaugoti pakeitimus',
+    editBack: 'Grįžti nekeičiant',
+    editSaved: 'Pakeitimai išsaugoti.',
+    editNone: 'Nieko nepakeista.',
+    editCancelled: 'Ši rezervacija atšaukta, jos keisti nebegalima.',
+    tooSoon: 'Šis laikas jau praėjo. Pasirinkite kitą.',
+    tooFar: 'Tiek į priekį rezervacijų dar nepriimame.',
+    // notes and language
+    notes: 'Pastabos (nebūtina)',
+    notesPh: 'Pvz., alergija riešutams',
+    noteChips: [['Alergija', 'Alergija: '], ['Kėdutė vaikui', 'Kėdutė vaikui'], ['Gimtadienis', 'Gimtadienis'], ['Terasa', 'Terasa']],
+    lang: 'Priminimo kalba',
+    langHelp: 'Parenkama pagal telefono numerį. Galite pakeisti.',
+    langNames: { es: 'Ispanų', en: 'Anglų', fr: 'Prancūzų', nl: 'Olandų', de: 'Vokiečių' },
+    // closing days and hours
+    closeOpen: 'Uždaryti dieną ar valandas',
+    closeTitle: 'Nepriimti rezervacijų',
+    closeWhole: 'Visą dieną', closeHours: 'Tam tikras valandas',
+    closeFrom: 'Nuo', closeTo: 'Iki', closeToEnd: 'dienos pabaigos',
+    closeReason: 'Priežastis (nebūtina)', closeReasonPh: 'Pvz., privati šventė',
+    closeBtn: 'Uždaryti',
+    closeHasQ: function (n) { return 'Tuo metu jau yra ' + n + ' ' + plural(n, 'rezervacija', 'rezervacijos', 'rezervacijų') + '.'; },
+    closeHasText: 'Jos liks galioti. Naujų rezervacijų tuo metu nebus priimama.',
+    closeYes: 'Vis tiek uždaryti',
+    closedOk: 'Uždaryta. Naujų rezervacijų tuo metu nebus priimama.',
+    closePast: 'Praėjusios dienos uždaryti negalima.',
+    closeBadTo: 'Pabaiga turi būti vėliau nei pradžia.',
+    closeLong: 'Priežastis per ilga (daugiausia 80 ženklų).',
+    bandWhole: 'Uždaryta visą dieną',
+    bandHours: function (f, t) { return 'Uždaryta ' + (t ? f + '–' + t : 'nuo ' + f); },
+    bandBy: function (n) { return 'Įvedė ' + n; },
+    weekdayClosed: 'Šią savaitės dieną restoranas nedirba.',
+    reopen: 'Atšaukti uždarymą',
+    reopenQ: 'Atšaukti uždarymą?',
+    reopenText: 'Rezervacijos tuo metu vėl bus priimamos.',
+    reopened: 'Uždarymas atšauktas. Rezervacijos vėl priimamos.'
   };
+
+  var LANGS = ['es', 'en', 'fr', 'nl', 'de'];
+  var MANAGER = 'vadovas';
+  var HOLDS = ['patvirtinta', 'atvyko'];
 
   var WD = ['sekmadienis', 'pirmadienis', 'antradienis', 'trečiadienis', 'ketvirtadienis', 'penktadienis', 'šeštadienis'];
   var WD_SHORT = ['Sk', 'Pr', 'An', 'Tr', 'Kt', 'Pn', 'Št'];
@@ -122,7 +181,11 @@
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>',
     remind: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg>',
     more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
-    check: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+    check: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    search: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+    left: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    right: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>'
   };
 
   var app = document.getElementById('app');
@@ -134,6 +197,10 @@
     day: null,
     open: null, // id of the reservation whose buttons are shown
     book: null,
+    edit: null, // booking form for changing an existing reservation (shown in the list tab)
+    q: '', // search text in the list tab
+    found: null,
+    cal: null, // open calendar sheet: { mode: 'list' | 'form', month: 'YYYY-MM' }
     reminders: null,
     people: null,
     invite: null,
@@ -168,6 +235,28 @@
     if (date === today) return T.today;
     if (date === addDays(today, 1)) return T.tomorrow;
     return WD_SHORT[weekday(date)] + ' ' + date.slice(5);
+  }
+  function holds(r) { return HOLDS.indexOf(r.status) !== -1; }
+  function isManager() { return state.start.me.role === MANAGER; }
+  function dayClosed(date) {
+    return state.start.closedWeekdays.indexOf(weekday(date)) !== -1 || state.start.closedDays.indexOf(date) !== -1;
+  }
+  // Same rules as the Google side (logika.js): the reminder language follows the country code.
+  function normalizePhone(raw) {
+    var s = String(raw || '').trim();
+    var digits = s.replace(/\D/g, '');
+    if (s.charAt(0) !== '+' && digits.indexOf('00') === 0) digits = digits.slice(2);
+    else if (s.charAt(0) !== '+' && digits.length === 9) digits = '34' + digits;
+    return digits.length < 10 || digits.length > 15 ? null : '+' + digits;
+  }
+  function guessLang(phone) {
+    var p = normalizePhone(phone);
+    if (!p) return '';
+    if (/^\+34/.test(p)) return 'es';
+    if (/^\+33/.test(p)) return 'fr';
+    if (/^\+(31|32)/.test(p)) return 'nl';
+    if (/^\+(49|43|41)/.test(p)) return 'de';
+    return 'en';
   }
   function isIos() {
     return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -292,11 +381,12 @@
 
   // ---------- frame ----------
 
-  function frame(title, sub, body) {
+  function frame(title, sub, body, tools) {
     var tabs = ['list', 'book', 'remind', 'more'];
     var unsent = state.reminders ? state.reminders.items.filter(function (r) { return !r.reminder; }).length : 0;
     app.innerHTML = '<div class="shell">' +
-      '<header class="top"><h1>' + esc(title) + '</h1>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</header>' +
+      '<header class="top"><div class="top-text"><h1>' + esc(title) + '</h1>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>' +
+      (tools || '') + '</header>' +
       '<main class="content">' + body + '</main></div>' +
       '<nav class="tabbar" aria-label="Skiltys"><div class="tabbar-in">' + tabs.map(function (t) {
         var badge = t === 'remind' && unsent ? '<span class="badge">' + unsent + '</span>' : '';
@@ -308,8 +398,9 @@
   function render() {
     if (!state.key) return renderJoin();
     if (!state.start) return;
+    if (state.tab === 'list' && state.edit) return renderForm(state.edit);
     if (state.tab === 'list') return renderList();
-    if (state.tab === 'book') return renderBook();
+    if (state.tab === 'book') return renderForm(state.book);
     if (state.tab === 'remind') return renderReminders();
     return renderMore();
   }
@@ -318,66 +409,193 @@
     return '<div class="error">' + esc(text) + '</div><button class="btn block" data-act="retry">' + esc(T.retry) + '</button>';
   }
 
-  // ---------- day list ----------
+  // ---------- date picker and calendar ----------
 
-  function dateChips(selected, act, dates) {
-    return '<div class="chips" role="group">' + dates.map(function (d) {
-      return '<button class="chip" data-act="' + act + '" data-date="' + d + '" aria-pressed="' + (d === selected) + '">' + esc(dateChip(d)) + '</button>';
-    }).join('') + '</div>';
+  // Today, tomorrow and a calendar for any other date. mode 'list': any day can be viewed;
+  // mode 'form': only days that take bookings.
+  function datePicker(selected, act, mode) {
+    var today = state.start.today;
+    var near = [today, addDays(today, 1)];
+    var allowed = mode === 'form' ? formDates() : null;
+    var other = near.indexOf(selected) === -1;
+    return '<div class="chips" role="group" aria-label="' + esc(T.date) + '">' + near.map(function (d) {
+      var ok = !allowed || allowed.indexOf(d) !== -1;
+      return '<button class="chip" type="button" data-act="' + act + '" data-date="' + d + '" aria-pressed="' + (d === selected) + '"' +
+        (ok ? '' : ' disabled') + '>' + esc(dateChip(d)) + '</button>';
+    }).join('') +
+      '<button class="chip cal-chip" type="button" data-act="cal-open" data-mode="' + mode + '" aria-pressed="' + other + '">' +
+      ICONS.cal + esc(other ? dateChip(selected) : T.otherDate) + '</button></div>';
   }
 
-  function listDates() {
-    var out = [];
-    for (var i = 0; i < 7; i++) out.push(addDays(state.start.today, i));
-    if (out.indexOf(state.date) === -1) out.push(state.date);
-    return out;
+  function shiftMonth(month, n) {
+    var d = new Date(month + '-15T12:00:00Z');
+    d.setUTCMonth(d.getUTCMonth() + n);
+    return d.toISOString().slice(0, 7);
+  }
+
+  function calBounds(mode) {
+    var s = state.start;
+    if (mode === 'list') return { min: addDays(s.today, -365), max: addDays(s.today, s.daysAhead) };
+    var d = formDates();
+    return { min: d[0] || s.today, max: d[d.length - 1] || s.today };
+  }
+
+  function openCal(mode) {
+    var sel = mode === 'list' ? state.date : cur().date;
+    state.cal = { mode: mode, month: sel.slice(0, 7) };
+    sheet('<div class="cal">' + calHtml() + '</div>');
+  }
+
+  function calHtml() {
+    var c = state.cal;
+    var b = calBounds(c.mode);
+    var today = state.start.today;
+    var sel = c.mode === 'list' ? state.date : cur().date;
+    var allowed = c.mode === 'form' ? formDates() : null;
+    var y = Number(c.month.slice(0, 4));
+    var m = Number(c.month.slice(5, 7));
+    var lead = (weekday(c.month + '-01') + 6) % 7; // weeks start on Monday
+    var days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    var canPrev = shiftMonth(c.month, -1) >= b.min.slice(0, 7);
+    var canNext = shiftMonth(c.month, 1) <= b.max.slice(0, 7);
+    var html = '<div class="cal-head">' +
+      '<button class="icon-btn" data-act="cal-month" data-n="-1" aria-label="' + esc(T.prevMonth) + '"' + (canPrev ? '' : ' disabled') + '>' + ICONS.left + '</button>' +
+      '<h2>' + y + ' m. ' + esc(T.months[m - 1]) + '</h2>' +
+      '<button class="icon-btn" data-act="cal-month" data-n="1" aria-label="' + esc(T.nextMonth) + '"' + (canNext ? '' : ' disabled') + '>' + ICONS.right + '</button></div>' +
+      '<div class="cal-grid">' + ['Pr', 'An', 'Tr', 'Kt', 'Pn', 'Št', 'Sk'].map(function (w) { return '<div class="cal-wd">' + w + '</div>'; }).join('');
+    for (var i = 0; i < lead; i++) html += '<div></div>';
+    for (var d = 1; d <= days; d++) {
+      var date = c.month + '-' + (d < 10 ? '0' : '') + d;
+      var ok = allowed ? allowed.indexOf(date) !== -1 : date >= b.min && date <= b.max;
+      html += '<button class="cal-day' + (dayClosed(date) ? ' closed' : '') + (date === today ? ' today' : '') + '" data-act="cal-pick" data-date="' + date + '"' +
+        ' aria-pressed="' + (date === sel) + '" aria-label="' + esc(dateLong(date)) + '"' + (ok ? '' : ' disabled') + '>' + d + '</button>';
+    }
+    var todayOk = allowed ? allowed.indexOf(today) !== -1 : true;
+    return html + '</div><p class="muted cal-note">' + esc(T.calClosed) + '</p>' +
+      '<div class="row"><button class="btn" data-act="close">' + esc(T.back) + '</button>' +
+      '<button class="btn" data-act="cal-pick" data-date="' + today + '"' + (todayOk ? '' : ' disabled') + '>' + esc(T.today) + '</button></div>';
+  }
+
+  function pickDate(date) {
+    var mode = state.cal ? state.cal.mode : 'list';
+    closeSheet();
+    state.cal = null;
+    if (mode === 'list') { state.open = null; loadDay(date); return; }
+    keepTyped();
+    var f = cur();
+    f.date = date;
+    f.error = '';
+    loadTimes();
+  }
+
+  // ---------- day list ----------
+
+  function listIdle() { return !state.edit && !searching(); }
+  function searching() { return state.q.trim().length >= 2; }
+
+  function dayTools() {
+    return '<div class="top-tools">' +
+      '<button class="icon-btn on-dark" data-act="day-step" data-n="-1" aria-label="' + esc(T.prevDay) + '">' + ICONS.left + '</button>' +
+      '<button class="icon-btn on-dark" data-act="day-step" data-n="1" aria-label="' + esc(T.nextDay) + '">' + ICONS.right + '</button></div>';
   }
 
   function renderList() {
-    var d = state.day && state.day.date === state.date ? state.day : null;
-    var body = dateChips(state.date, 'pick-day', listDates()) +
-      '<label class="field" style="margin-top:10px"><span class="muted" style="font-weight:500">' + esc(T.otherDate) + '</span>' +
-      '<input type="date" data-act="pick-other" value="' + state.date + '"></label>';
-    if (state.error) body += errorBox(state.error);
-    else if (!d) body += '<div class="empty">' + esc(T.loading) + '</div>';
-    else {
-      var live = d.items.filter(function (r) { return r.status === 'patvirtinta'; });
-      var gone = d.items.filter(function (r) { return r.status !== 'patvirtinta'; });
-      var ppl = live.reduce(function (s, r) { return s + Number(r.people); }, 0);
-      body += '<div class="summary"><b>' + esc(T.summary(live.length, ppl)) + '</b></div>';
-      body += live.length ? '<div class="list">' + live.map(resCard).join('') + '</div>' : '<div class="card empty">' + esc(T.empty) + '</div>';
-      if (gone.length) body += '<div class="section-title">' + esc(T.cancelledTitle) + '</div><div class="list">' + gone.map(resCard).join('') + '</div>';
-    }
-    frame(dateLong(state.date), state.start.restaurantName, body);
+    var body = '<label class="search">' + ICONS.search + '<span class="sr">' + esc(T.searchLabel) + '</span>' +
+      '<input type="search" data-act="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="' + esc(T.searchPh) + '" value="' + esc(state.q) + '"></label>' +
+      '<div id="list-body">' + (searching() ? foundBody() : dayBody()) + '</div>';
+    frame(dateLong(state.date), state.start.restaurantName, body, dayTools());
   }
 
-  function resCard(r) {
-    var cancelled = r.status !== 'patvirtinta';
+  // Search results and the day list swap inside #list-body, so typing never loses the keyboard.
+  function fillListBody() {
+    var el = document.getElementById('list-body');
+    if (el) el.innerHTML = searching() ? foundBody() : dayBody();
+  }
+
+  function dayBody() {
+    var d = state.day && state.day.date === state.date ? state.day : null;
+    var body = datePicker(state.date, 'pick-day', 'list');
+    if (state.error) return body + errorBox(state.error);
+    if (!d) return body + '<div class="empty">' + esc(T.loading) + '</div>';
+    body += closureBands(d);
+    var live = d.items.filter(function (r) { return r.status !== 'atšaukta'; });
+    var gone = d.items.filter(function (r) { return r.status === 'atšaukta'; });
+    var seated = live.filter(holds);
+    var ppl = seated.reduce(function (s, r) { return s + Number(r.people); }, 0);
+    var arrived = live.filter(function (r) { return r.status === 'atvyko'; }).length;
+    var noShow = live.filter(function (r) { return r.status === 'neatvyko'; }).length;
+    body += '<div class="summary"><b>' + esc(T.summary(seated.length, ppl)) + '</b>' +
+      (arrived || noShow ? '<span class="muted">' + esc(T.marks(arrived, noShow)) + '</span>' : '') + '</div>';
+    body += live.length ? '<div class="list">' + live.map(function (r) { return resCard(r); }).join('') + '</div>' : '<div class="card empty">' + esc(T.empty) + '</div>';
+    if (gone.length) body += '<div class="section-title">' + esc(T.cancelledTitle) + '</div><div class="list">' + gone.map(function (r) { return resCard(r); }).join('') + '</div>';
+    if (isManager() && state.date >= state.start.today) {
+      body += '<button class="btn block close-open" data-act="close-open">' + esc(T.closeOpen) + '</button>';
+    }
+    return body;
+  }
+
+  function closureBands(d) {
+    var out = '';
+    var canReopen = isManager() && d.date >= state.start.today;
+    if (d.weekdayClosed) out += '<div class="band"><div class="band-text"><b>' + esc(T.weekdayClosed) + '</b></div></div>';
+    d.closures.forEach(function (c) {
+      out += '<div class="band"><div class="band-text"><b>' + esc(c.from ? T.bandHours(c.from, c.to) : T.bandWhole) + '</b>' +
+        (c.reason ? ' · ' + esc(c.reason) : '') + '<div class="muted">' + esc(T.bandBy(c.by)) + '</div></div>' +
+        (canReopen ? '<button class="btn small" data-act="reopen" data-id="' + esc(c.id) + '">' + esc(T.reopen) + '</button>' : '') + '</div>';
+    });
+    return out;
+  }
+
+  function resCard(r, found) {
+    var cancelled = r.status === 'atšaukta';
+    var noShow = r.status === 'neatvyko';
+    var mark = r.status === 'atvyko' ? '<span class="tag done">' + esc(T.tagArrived) + '</span> ' :
+      noShow ? '<span class="tag off">' + esc(T.tagNoShow) + '</span> ' : '';
     var src = '<span class="tag' + (r.source === 'puslapis' ? ' web' : '') + '">' + esc(T.src[r.source] || r.source) + '</span>';
-    var open = state.open === r.id && !cancelled;
-    return '<div class="card res' + (cancelled ? ' cancelled' : '') + '" data-act="toggle" data-id="' + esc(r.id) + '" role="button" tabindex="0" aria-expanded="' + open + '">' +
-      '<div class="time">' + esc(r.time) + '</div>' +
-      '<div class="who"><div class="name">' + esc(r.name) + '</div><div class="meta">' + src + ' ' + esc(r.phone) + '</div></div>' +
+    var open = !found && state.open === r.id && !cancelled;
+    return '<div class="card res' + (cancelled ? ' cancelled' : '') + (noShow ? ' noshow' : '') + '" data-act="' + (found ? 'open-found' : 'toggle') + '"' +
+      ' data-id="' + esc(r.id) + '" data-date="' + esc(r.date) + '" role="button" tabindex="0"' + (found ? '' : ' aria-expanded="' + open + '"') + '>' +
+      '<div class="time">' + esc(r.time) + (found ? '<small>' + esc(dateChip(r.date)) + '</small>' : '') + '</div>' +
+      '<div class="who"><div class="name">' + esc(r.name) + '</div>' +
+      '<div class="meta">' + mark + src + ' ' + esc(r.phone) + (r.lang ? ' · ' + esc(r.lang.toUpperCase()) : '') + '</div>' +
+      (r.notes ? '<div class="notes' + (open ? ' full' : '') + '">' + esc(r.notes) + '</div>' : '') + '</div>' +
       '<div class="people">' + esc(T.people(r.people)) + '</div>' +
-      (open ? '<div class="actions"><a class="btn small" href="tel:' + esc(r.phone.replace(/[^\d+]/g, '')) + '">' + esc(T.call) + '</a>' +
-        '<button class="btn small danger" data-act="cancel" data-id="' + esc(r.id) + '">' + esc(T.cancel) + '</button></div>' : '') +
-      '</div>';
+      (open ? resActions(r) : '') + '</div>';
+  }
+
+  function resActions(r) {
+    var id = esc(r.id);
+    var out = '';
+    if (r.date <= state.start.today) {
+      out += '<div class="actions">' + (r.status === 'patvirtinta' ?
+        '<button class="btn small ok" data-act="arrive" data-id="' + id + '" data-v="atvyko">' + esc(T.arrived) + '</button>' +
+        '<button class="btn small" data-act="arrive" data-id="' + id + '" data-v="neatvyko">' + esc(T.noShow) + '</button>' :
+        '<button class="btn small" data-act="arrive" data-id="' + id + '" data-v="">' + esc(T.unmark) + '</button>') + '</div>';
+    }
+    out += '<div class="actions"><a class="btn small" href="tel:' + esc(r.phone.replace(/[^\d+]/g, '')) + '">' + esc(T.call) + '</a>' +
+      '<button class="btn small" data-act="edit" data-id="' + id + '">' + esc(T.edit) + '</button>' +
+      (r.status === 'patvirtinta' ? '<button class="btn small danger" data-act="cancel" data-id="' + id + '">' + esc(T.cancel) + '</button>' : '') + '</div>';
+    return out;
+  }
+
+  function findItem(id) {
+    return (state.day ? state.day.items : []).filter(function (x) { return x.id === id; })[0];
   }
 
   function loadDay(date) {
     state.date = date;
     state.error = '';
-    if (state.tab === 'list') render();
+    if (state.tab === 'list' && listIdle()) render();
     return call('day', { date: date }).then(function (res) {
       if (!state.key) return;
       if (res.ok) state.day = res;
       else state.error = res.reason === 'network' ? T.network : T.error;
-      if (state.tab === 'list' && state.date === date) render();
+      if (state.tab === 'list' && state.date === date && listIdle()) render();
     });
   }
 
   function askCancel(id) {
-    var r = (state.day.items || []).filter(function (x) { return x.id === id; })[0];
+    var r = findItem(id);
     if (!r) return;
     sheet('<h2>' + esc(T.cancelQ) + '</h2><p class="muted">' + esc(dateLong(state.date) + ' ' + r.time + ' · ' + T.people(r.people) + ' · ' + r.name) + '</p>' +
       '<div class="row"><button class="btn" data-act="close">' + esc(T.no) + '</button>' +
@@ -395,17 +613,193 @@
     });
   }
 
-  // ---------- new booking ----------
-
-  function newBooking(date) {
-    state.book = { date: date || state.start.today, people: 0, bigPeople: false, time: '', times: null, loadingTimes: false,
-      name: '', phone: '', consent: false, error: '' };
+  function doArrive(id, value, btn) {
+    btn.disabled = true;
+    call('arrive', { id: id, value: value }).then(function (res) {
+      if (res.ok) {
+        var r = findItem(id);
+        if (r) r.status = res.item.status;
+        state.open = null;
+        render();
+      } else {
+        btn.disabled = false;
+        toast(res.reason === 'future' ? T.future : res.reason === 'already' ? T.already : res.reason === 'network' ? T.network : T.error);
+      }
+      loadDay(state.date);
+    });
   }
 
-  function renderBook() {
-    var b = state.book;
+  // ---------- search ----------
+
+  var searchTimer;
+  var searchSeq = 0;
+  function onSearch(value) {
+    var was = searching();
+    state.q = value;
+    clearTimeout(searchTimer);
+    if (!searching()) {
+      state.found = null;
+      if (was) fillListBody();
+      return;
+    }
+    if (!was) fillListBody();
+    searchTimer = setTimeout(function () {
+      var seq = ++searchSeq;
+      call('search', { q: state.q }).then(function (res) {
+        if (seq !== searchSeq || !searching()) return;
+        state.found = res.ok ? res : { items: [], more: false, failed: res.reason === 'network' };
+        fillListBody();
+      });
+    }, 350);
+  }
+
+  function foundBody() {
+    var f = state.found;
+    if (!f) return '<div class="empty">' + esc(T.loading) + '</div>';
+    if (f.failed) return '<div class="error">' + esc(T.network) + '</div>';
+    if (!f.items.length) return '<div class="card empty">' + esc(T.searchNone) + '</div>';
+    return '<div class="list">' + f.items.map(function (r) { return resCard(r, true); }).join('') + '</div>' +
+      (f.more ? '<p class="muted">' + esc(T.searchMore) + '</p>' : '');
+  }
+
+  function openFound(date, id) {
+    state.q = '';
+    state.found = null;
+    state.open = id;
+    state.day = null;
+    loadDay(date);
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- closing days and hours (manager) ----------
+
+  function openClose() {
+    state.closing = { whole: true, from: state.start.times[0], to: '', reason: '', error: '' };
+    sheet(closeHtml());
+  }
+
+  function resheet(html) {
+    var el = document.querySelector('.backdrop .sheet');
+    if (el) el.innerHTML = html;
+  }
+
+  function closeHtml() {
+    var c = state.closing;
+    var times = state.start.times;
+    var html = '<h2>' + esc(T.closeTitle) + '</h2><p class="muted" style="margin-top:0">' + esc(dateLong(state.date)) + '</p>' +
+      '<form data-form="close" novalidate><div class="chips" role="group">' +
+      '<button type="button" class="chip" data-act="close-mode" data-whole="1" aria-pressed="' + c.whole + '">' + esc(T.closeWhole) + '</button>' +
+      '<button type="button" class="chip" data-act="close-mode" data-whole="0" aria-pressed="' + !c.whole + '">' + esc(T.closeHours) + '</button></div>';
+    if (!c.whole) {
+      html += '<div class="two"><label class="field"><span>' + esc(T.closeFrom) + '</span><select name="from">' + times.map(function (t) {
+        return '<option' + (t === c.from ? ' selected' : '') + '>' + t + '</option>';
+      }).join('') + '</select></label>' +
+        '<label class="field"><span>' + esc(T.closeTo) + '</span><select name="to">' + times.filter(function (t) { return t > c.from; }).map(function (t) {
+          return '<option' + (t === c.to ? ' selected' : '') + '>' + t + '</option>';
+        }).join('') + '<option value=""' + (c.to ? '' : ' selected') + '>' + esc(T.closeToEnd) + '</option></select></label></div>';
+    }
+    return html + '<label class="field"><span>' + esc(T.closeReason) + '</span><input type="text" name="reason" maxlength="80" autocomplete="off" placeholder="' +
+      esc(T.closeReasonPh) + '" value="' + esc(c.reason) + '"></label>' +
+      (c.error ? '<div class="error">' + esc(c.error) + '</div>' : '') +
+      '<div class="row"><button type="button" class="btn" data-act="close">' + esc(T.back) + '</button>' +
+      '<button type="submit" class="btn primary">' + esc(T.closeBtn) + '</button></div></form>';
+  }
+
+  function keepClose() {
+    var f = document.querySelector('form[data-form=close]');
+    var c = state.closing;
+    if (!f || !c) return;
+    c.reason = f.reason.value;
+    if (f.from) {
+      c.from = f.from.value;
+      c.to = f.to.value > c.from ? f.to.value : '';
+    }
+  }
+
+  function submitClose(force, btn) {
+    keepClose();
+    var c = state.closing;
+    if (btn) btn.disabled = true;
+    call('close', { date: state.date, from: c.whole ? '' : c.from, to: c.whole ? '' : c.to, reason: c.reason, force: force === true }).then(function (res) {
+      if (res.ok) {
+        closeSheet();
+        toast(T.closedOk);
+        refreshStart();
+        loadDay(state.date);
+        return;
+      }
+      if (res.reason === 'has_bookings') {
+        resheet('<h2>' + esc(T.closeHasQ(res.count)) + '</h2><p class="muted">' + esc(T.closeHasText) + '</p>' +
+          '<div class="row"><button class="btn" data-act="close-back">' + esc(T.back) + '</button>' +
+          '<button class="btn primary" data-act="close-force">' + esc(T.closeYes) + '</button></div>');
+        return;
+      }
+      c.error = res.field === 'date' ? T.closePast : res.field === 'to' ? T.closeBadTo : res.field === 'reason' ? T.closeLong :
+        res.reason === 'manager' ? T.managerOnly : res.reason === 'network' ? T.network : T.error;
+      resheet(closeHtml());
+    });
+  }
+
+  function askReopen(id) {
+    sheet('<h2>' + esc(T.reopenQ) + '</h2><p class="muted">' + esc(T.reopenText) + '</p>' +
+      '<div class="row"><button class="btn" data-act="close">' + esc(T.no) + '</button>' +
+      '<button class="btn primary" data-act="reopen-yes" data-id="' + esc(id) + '">' + esc(T.reopen) + '</button></div>');
+  }
+
+  function doReopen(id, btn) {
+    btn.disabled = true;
+    call('reopen', { id: id }).then(function (res) {
+      closeSheet();
+      toast(res.ok ? T.reopened : res.reason === 'network' ? T.network : T.error);
+      refreshStart();
+      loadDay(state.date);
+    });
+  }
+
+  // Bookable dates and closed days change when a manager closes or reopens.
+  function refreshStart() {
+    call('start').then(function (res) {
+      if (!res.ok || !state.start) return;
+      state.start = res;
+      if (state.tab === 'list' && listIdle()) render();
+    });
+  }
+
+  // ---------- booking form (new and edit) ----------
+
+  // The form on screen: the edit form inside the list tab, otherwise the new booking.
+  function cur() { return state.tab === 'list' && state.edit ? state.edit : state.book; }
+
+  // Dates the form may use. An edited booking keeps its own date even if it is closed now.
+  function formDates() {
+    var f = cur();
+    var d = state.start.dates.slice();
+    if (f && f.id && d.indexOf(f.origDate) === -1) { d.push(f.origDate); d.sort(); }
+    return d;
+  }
+
+  function newBooking(date) {
+    var dates = state.start.dates;
+    var first = dates.filter(function (d) { return d >= (date || state.start.today); })[0] || dates[0] || state.start.today;
+    state.book = { date: first, people: 0, bigPeople: false, time: '', times: null, loadingTimes: false,
+      name: '', phone: '', consent: false, notes: '', lang: '', langManual: false, error: '' };
+  }
+
+  function startEdit(id) {
+    var r = findItem(id);
+    if (!r) return;
+    var n = Number(r.people);
+    state.edit = { id: r.id, origDate: r.date, title: r.name + ' · ' + dateChip(r.date) + ' ' + r.time,
+      date: r.date, people: n, bigPeople: n > 7, time: r.time, times: null, loadingTimes: false,
+      name: r.name, phone: r.phone, consent: r.consent === true, notes: r.notes || '', lang: r.lang || '', langManual: true, error: '' };
+    loadTimes();
+    window.scrollTo(0, 0);
+  }
+
+  function renderForm(b) {
     var s = state.start;
-    var body = '<div class="section-title" style="margin-top:4px">' + esc(T.date) + '</div>' + dateChips(b.date, 'b-date', s.dates);
+    var editing = !!b.id;
+    var body = '<div class="section-title" style="margin-top:4px">' + esc(T.date) + '</div>' + datePicker(b.date, 'b-date', 'form');
     body += '<div class="section-title">' + esc(T.peopleQ) + '</div><div class="grid">';
     for (var n = 1; n <= 7; n++) {
       body += '<button class="chip" data-act="b-people" data-n="' + n + '" aria-pressed="' + (b.people === n && !b.bigPeople) + '">' + n + '</button>';
@@ -428,44 +822,95 @@
     body += '<form data-form="book" novalidate>' +
       '<label class="field"><span>' + esc(T.name) + '</span><input type="text" name="name" autocomplete="off" maxlength="60" value="' + esc(b.name) + '"></label>' +
       '<label class="field"><span>' + esc(T.phone) + '</span><input type="tel" name="phone" autocomplete="off" placeholder="' + esc(T.phonePh) + '" value="' + esc(b.phone) + '"></label>' +
+      '<label class="field"><span>' + esc(T.notes) + '</span><textarea name="notes" rows="2" maxlength="300" placeholder="' + esc(T.notesPh) + '">' + esc(b.notes) + '</textarea></label>' +
+      '<div class="chips note-chips">' + T.noteChips.map(function (c) {
+        return '<button type="button" class="chip small" data-act="note-add" data-text="' + esc(c[1]) + '">+ ' + esc(c[0]) + '</button>';
+      }).join('') + '</div>' +
       '<label class="check"><input type="checkbox" name="consent"' + (b.consent ? ' checked' : '') + '><span>' + esc(T.consent) + '</span></label>' +
+      '<div class="field"><span class="field-label" id="lang-label">' + esc(T.lang) + '</span><div class="grid five" role="group" aria-labelledby="lang-label">' +
+      LANGS.map(function (l) {
+        return '<button type="button" class="chip" data-act="b-lang" data-l="' + l + '" aria-pressed="' + (b.lang === l) + '" aria-label="' + esc(T.langNames[l]) + '">' + l.toUpperCase() + '</button>';
+      }).join('') + '</div><p class="muted hint">' + esc(T.langHelp) + '</p></div>' +
       (b.error ? '<div class="error">' + esc(b.error) + '</div>' : '') +
-      '<button class="btn primary block" type="submit"' + (b.time ? '' : ' disabled') + '>' + esc(T.save) + '</button></form>';
-    frame(T.bookTitle, T.bookSub, body);
+      '<button class="btn primary block" type="submit"' + (b.time ? '' : ' disabled') + '>' + esc(editing ? T.saveEdit : T.save) + '</button>' +
+      (editing ? '<button class="btn block" type="button" data-act="edit-back" style="margin-top:10px">' + esc(T.editBack) + '</button>' : '') +
+      '</form>';
+    frame(editing ? T.editTitle : T.bookTitle, editing ? b.title : T.bookSub, body);
   }
 
   function keepTyped() {
     var f = app.querySelector('form[data-form=book]');
-    if (!f || !state.book) return;
-    state.book.name = f.name.value;
-    state.book.phone = f.phone.value;
-    state.book.consent = f.consent.checked;
+    var b = cur();
+    if (!f || !b) return;
+    b.name = f.name.value;
+    b.phone = f.phone.value;
+    b.notes = f.notes.value;
+    b.consent = f.consent.checked;
+  }
+
+  function showLang(lang) {
+    app.querySelectorAll('[data-act=b-lang]').forEach(function (el) { el.setAttribute('aria-pressed', String(el.dataset.l === lang)); });
+  }
+
+  function addNote(text) {
+    var ta = app.querySelector('textarea[name=notes]');
+    if (!ta) return;
+    var v = ta.value.replace(/[\s,]+$/, '');
+    if (v.toLowerCase().indexOf(text.trim().toLowerCase()) === -1) ta.value = (v ? v + ', ' : '') + text;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   }
 
   function loadTimes() {
-    var b = state.book;
+    var b = cur();
+    var keep = b.time;
     b.time = '';
     b.times = null;
     if (!b.people || b.people > state.start.maxPhoneGroup) return render();
     b.loadingTimes = true;
     render();
     var asked = b.date + '/' + b.people;
-    call('slots', { date: b.date, people: b.people }).then(function (res) {
-      if (state.book !== b || asked !== b.date + '/' + b.people) return;
+    call('slots', { date: b.date, people: b.people, exclude: b.id || '' }).then(function (res) {
+      if (cur() !== b || asked !== b.date + '/' + b.people) return;
       b.loadingTimes = false;
       b.times = res.ok ? res.times : [];
+      if (b.times.indexOf(keep) !== -1) b.time = keep;
       if (!res.ok) b.error = res.reason === 'network' ? T.network : T.error;
-      if (state.tab === 'book') { keepTyped(); render(); }
+      keepTyped();
+      render();
     });
   }
 
-  function saveBooking(form) {
+  function failText(res) {
+    return res.reason === 'closed' ? T.closed :
+      res.reason === 'too_soon' ? T.tooSoon :
+      res.reason === 'too_far' ? T.tooFar :
+      res.reason === 'already' ? T.editCancelled :
+      res.reason === 'network' ? T.network :
+      res.field === 'name' ? T.badName :
+      res.field === 'phone' ? T.badPhone :
+      res.reason === 'invalid' ? T.badField : T.error;
+  }
+
+  function saveForm(form) {
     keepTyped();
-    var b = state.book;
+    var b = cur();
     b.error = '';
-    var btn = form.querySelector('button[type=submit]');
-    btn.disabled = true;
-    call('book', { date: b.date, time: b.time, people: b.people, name: b.name.trim(), phone: b.phone.trim(), consent: b.consent }).then(function (res) {
+    form.querySelector('button[type=submit]').disabled = true;
+    var data = { date: b.date, time: b.time, people: b.people, name: b.name.trim(), phone: b.phone.trim(), consent: b.consent,
+      notes: b.notes.trim(), lang: b.lang };
+    if (b.id) data.id = b.id;
+    call(b.id ? 'update' : 'book', data).then(function (res) {
+      if (cur() !== b) return;
+      if (res.ok && b.id) {
+        state.edit = null;
+        state.open = res.item.id;
+        toast(res.changed === false ? T.editNone : T.editSaved);
+        state.day = null;
+        loadDay(res.item.date);
+        window.scrollTo(0, 0);
+        return;
+      }
       if (res.ok) {
         var it = res.item;
         sheet('<div class="ok-mark">' + ICONS.check + '</div><h2>' + esc(T.saved) + '</h2>' +
@@ -477,11 +922,7 @@
         return;
       }
       if (res.reason === 'full') { b.error = T.full; loadTimes(); return; }
-      b.error = res.reason === 'closed' ? T.closed :
-        res.reason === 'network' ? T.network :
-        res.field === 'name' ? T.badName :
-        res.field === 'phone' ? T.badPhone :
-        res.reason === 'invalid' ? T.badField : T.error;
+      b.error = failText(res);
       render();
     });
   }
@@ -658,6 +1099,39 @@
         break;
       case 'retry': state.error = ''; loadDay(state.date); break;
       case 'pick-day': state.open = null; loadDay(el.dataset.date); break;
+      case 'day-step': {
+        var lim = calBounds('list');
+        var next = addDays(state.date, Number(el.dataset.n));
+        if (next < lim.min || next > lim.max) break;
+        state.open = null;
+        loadDay(next);
+        break;
+      }
+      case 'cal-open': keepTyped(); openCal(el.dataset.mode); break;
+      case 'cal-month': {
+        state.cal.month = shiftMonth(state.cal.month, Number(el.dataset.n));
+        var box = document.querySelector('.backdrop .cal');
+        if (box) box.innerHTML = calHtml();
+        break;
+      }
+      case 'cal-pick': pickDate(el.dataset.date); break;
+      case 'open-found': openFound(el.dataset.date, id); break;
+      case 'arrive': doArrive(id, el.dataset.v, el); break;
+      case 'edit': startEdit(id); break;
+      case 'edit-back': state.edit = null; render(); window.scrollTo(0, 0); break;
+      case 'note-add': addNote(el.dataset.text); break;
+      case 'b-lang': keepTyped(); cur().lang = el.dataset.l; cur().langManual = true; showLang(el.dataset.l); break;
+      case 'close-open': openClose(); break;
+      case 'close-mode':
+        keepClose();
+        state.closing.whole = el.dataset.whole === '1';
+        state.closing.error = '';
+        resheet(closeHtml());
+        break;
+      case 'close-back': resheet(closeHtml()); break;
+      case 'close-force': submitClose(true, el); break;
+      case 'reopen': askReopen(id); break;
+      case 'reopen-yes': doReopen(id, el); break;
       case 'toggle':
         if (e.target.closest('a, button')) return;
         state.open = state.open === id ? null : id;
@@ -666,10 +1140,10 @@
       case 'cancel': askCancel(id); break;
       case 'cancel-yes': doCancel(id, el); break;
       case 'close': closeSheet(); break;
-      case 'b-date': keepTyped(); state.book.date = el.dataset.date; state.book.error = ''; loadTimes(); break;
-      case 'b-people': keepTyped(); state.book.bigPeople = false; state.book.people = Number(el.dataset.n); state.book.error = ''; loadTimes(); break;
-      case 'b-big': keepTyped(); state.book.bigPeople = true; state.book.people = 0; state.book.time = ''; render(); focusLater('[data-act=b-people-input]'); break;
-      case 'b-time': keepTyped(); state.book.time = el.dataset.t; state.book.error = ''; render(); break;
+      case 'b-date': keepTyped(); cur().date = el.dataset.date; cur().error = ''; loadTimes(); break;
+      case 'b-people': keepTyped(); cur().bigPeople = false; cur().people = Number(el.dataset.n); cur().error = ''; loadTimes(); break;
+      case 'b-big': keepTyped(); cur().bigPeople = true; cur().people = 0; cur().time = ''; render(); focusLater('[data-act=b-people-input]'); break;
+      case 'b-time': keepTyped(); cur().time = el.dataset.t; cur().error = ''; render(); break;
       case 'book-again': closeSheet(); break;
       case 'see-day': closeSheet(); state.tab = 'list'; state.day = null; loadDay(el.dataset.date); break;
       case 'mark-sent': markSent(id, el); break;
@@ -711,22 +1185,29 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeSheet();
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-act=toggle]')) { e.preventDefault(); e.target.click(); }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-act=toggle], [data-act=open-found]')) { e.preventDefault(); e.target.click(); }
   });
 
   document.addEventListener('change', function (e) {
     var el = e.target;
-    if (el.dataset.act === 'pick-other' && el.value) { state.open = null; loadDay(el.value); }
+    if (el.name === 'from' && el.closest('form[data-form=close]')) { keepClose(); resheet(closeHtml()); }
   });
 
   var peopleTimer;
   document.addEventListener('input', function (e) {
-    if (e.target.dataset.act !== 'b-people-input') return;
-    var n = Number(e.target.value);
+    var el = e.target;
+    if (el.dataset.act === 'search') return onSearch(el.value);
+    if (el.name === 'phone' && el.closest('form[data-form=book]')) {
+      var f = cur();
+      if (f && !f.langManual) { f.lang = guessLang(el.value); showLang(f.lang); }
+      return;
+    }
+    if (el.dataset.act !== 'b-people-input') return;
+    var n = Number(el.value);
     clearTimeout(peopleTimer);
     peopleTimer = setTimeout(function () {
       keepTyped();
-      state.book.people = n >= 1 ? Math.floor(n) : 0;
+      cur().people = n >= 1 ? Math.floor(n) : 0;
       loadTimes();
       focusLater('[data-act=b-people-input]', true);
     }, 600);
@@ -748,7 +1229,9 @@
       f.querySelector('button').disabled = true;
       join(f.code.value);
     } else if (f.dataset.form === 'book') {
-      saveBooking(f);
+      saveForm(f);
+    } else if (f.dataset.form === 'close') {
+      submitClose(false, f.querySelector('button[type=submit]'));
     } else if (f.dataset.form === 'invite') {
       var btn = f.querySelector('button');
       btn.disabled = true;
@@ -767,6 +1250,9 @@
   function switchTab(tab) {
     if (state.tab === 'book') keepTyped();
     state.tab = tab;
+    state.edit = null;
+    state.q = '';
+    state.found = null;
     closeSheet();
     if (tab === 'list') loadDay(state.date);
     if (tab === 'book' && !state.book) newBooking(state.date >= state.start.today ? state.date : state.start.today);
@@ -780,7 +1266,7 @@
   // Opened from a notification, or the service worker says something changed.
   function openFrom(params) {
     if (params.view === 'reminders') return switchTab('remind');
-    if (params.date) { state.tab = 'list'; state.day = null; loadDay(params.date); }
+    if (params.date) { state.tab = 'list'; state.edit = null; state.q = ''; state.found = null; state.day = null; loadDay(params.date); }
   }
 
   if ('serviceWorker' in navigator) {
@@ -788,7 +1274,7 @@
     navigator.serviceWorker.addEventListener('message', function (e) {
       if (!state.start || !e.data) return;
       if (e.data.type === 'open') openFrom(e.data);
-      if (e.data.type === 'changed') { if (state.tab === 'list') loadDay(state.date); loadReminders(); }
+      if (e.data.type === 'changed') { if (state.tab === 'list' && listIdle()) loadDay(state.date); loadReminders(); }
     });
   }
   window.addEventListener('beforeinstallprompt', function (e) {
@@ -799,10 +1285,10 @@
 
   // Fresh list when the phone comes back to the app, and every minute while open.
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible' && state.start) { if (state.tab === 'list') loadDay(state.date); loadReminders(); }
+    if (document.visibilityState === 'visible' && state.start) { if (state.tab === 'list' && listIdle()) loadDay(state.date); loadReminders(); }
   });
   setInterval(function () {
-    if (document.visibilityState === 'visible' && state.start && state.tab === 'list') loadDay(state.date);
+    if (document.visibilityState === 'visible' && state.start && state.tab === 'list' && listIdle() && !document.querySelector('.backdrop')) loadDay(state.date);
   }, 60000);
 
   // ---------- start ----------
