@@ -249,6 +249,11 @@
     else if (s.charAt(0) !== '+' && digits.length === 9) digits = '34' + digits;
     return digits.length < 10 || digits.length > 15 ? null : '+' + digits;
   }
+  // Phones are stored without spaces (+34600111201); show them in groups of three.
+  function showPhone(p) {
+    var m = /^\+(34|33|31|32|49|43|41|44|39|351|353|370|1)(\d{6,})$/.exec(String(p || ''));
+    return m ? '+' + m[1] + ' ' + m[2].replace(/(\d{3})(?=\d{2})/g, '$1 ') : String(p || '');
+  }
   function guessLang(phone) {
     var p = normalizePhone(phone);
     if (!p) return '';
@@ -557,7 +562,7 @@
       ' data-id="' + esc(r.id) + '" data-date="' + esc(r.date) + '" role="button" tabindex="0"' + (found ? '' : ' aria-expanded="' + open + '"') + '>' +
       '<div class="time">' + esc(r.time) + (found ? '<small>' + esc(dateChip(r.date)) + '</small>' : '') + '</div>' +
       '<div class="who"><div class="name">' + esc(r.name) + '</div>' +
-      '<div class="meta">' + mark + src + ' ' + esc(r.phone) + (r.lang ? ' · ' + esc(r.lang.toUpperCase()) : '') + '</div>' +
+      '<div class="meta">' + mark + src + ' ' + esc(showPhone(r.phone)) + (r.lang ? ' · ' + esc(r.lang.toUpperCase()) : '') + '</div>' +
       (r.notes ? '<div class="notes' + (open ? ' full' : '') + '">' + esc(r.notes) + '</div>' : '') + '</div>' +
       '<div class="people">' + esc(T.people(r.people)) + '</div>' +
       (open ? resActions(r) : '') + '</div>';
@@ -810,6 +815,11 @@
         '" data-act="b-people-input" value="' + (b.people >= 8 ? b.people : '') + '" placeholder="8"></label>';
     }
     body += '<div class="section-title">' + esc(T.time) + '</div>';
+    if (b.times && b.closures && b.closures.length) {
+      body += b.closures.map(function (c) {
+        return '<p class="hint">' + esc(c.from ? T.bandHours(c.from, c.to) : T.bandWhole) + (c.reason ? ' · ' + esc(c.reason) : '') + '</p>';
+      }).join('');
+    }
     if (!b.people) body += '<p class="muted">' + esc(T.pickFirst) + '</p>';
     else if (b.people > s.maxPhoneGroup) body += '<p class="muted">' + esc(T.tooBig(s.maxPhoneGroup)) + '</p>';
     else if (b.loadingTimes || !b.times) body += '<p class="muted">' + esc(T.loading) + '</p>';
@@ -874,6 +884,7 @@
       if (cur() !== b || asked !== b.date + '/' + b.people) return;
       b.loadingTimes = false;
       b.times = res.ok ? res.times : [];
+      b.closures = res.ok ? res.closures || [] : [];
       if (b.times.indexOf(keep) !== -1) b.time = keep;
       if (!res.ok) b.error = res.reason === 'network' ? T.network : T.error;
       keepTyped();
@@ -946,7 +957,7 @@
         var done = !!x.reminder;
         return '<div class="card res"><div class="time">' + esc(x.time) + '</div>' +
           '<div class="who"><div class="name">' + esc(x.name) + '</div><div class="meta">' +
-          '<span class="tag' + (done ? ' done' : '') + '">' + esc(done ? T.sent : T.waiting) + '</span> ' + esc(x.phone) + '</div></div>' +
+          '<span class="tag' + (done ? ' done' : '') + '">' + esc(done ? T.sent : T.waiting) + '</span> ' + esc(showPhone(x.phone)) + '</div></div>' +
           '<div class="people">' + esc(T.people(x.people)) + '</div>' +
           '<div class="actions"><a class="btn small' + (done ? '' : ' primary') + '" href="' + esc(x.whatsapp) + '" target="_blank" rel="noopener">' + esc(T.whatsapp) + '</a>' +
           (done ? '' : '<button class="btn small" data-act="mark-sent" data-id="' + esc(x.id) + '">✓ ' + esc(T.markSent) + '</button>') + '</div></div>';
