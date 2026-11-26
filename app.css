@@ -42,6 +42,19 @@ button { cursor: pointer; }
 .top { display: flex; align-items: center; gap: 12px; }
 .top-text { flex: 1; min-width: 0; }
 .top-tools { display: flex; gap: 6px; flex: none; }
+.top { flex-wrap: wrap; }
+.rest-switch {
+  order: -1; flex-basis: 100%; display: flex; gap: 4px; padding: 3px; margin-bottom: 2px;
+  border-radius: 12px; background: rgba(255,255,255,0.12);
+}
+.rest-switch button {
+  flex: 1; min-height: 40px; border: 0; border-radius: 9px; background: none; color: #fff; font-weight: 600;
+}
+.rest-switch button[aria-pressed="true"] { background: #fff; color: var(--green); }
+.rest-switch button:disabled { cursor: default; }
+fieldset.rests { border: 0; margin: 14px 0 0; padding: 0; }
+fieldset.rests legend { padding: 0; font-size: 14px; color: var(--muted); }
+fieldset.rests .check { margin: 10px 0; }
 .icon-btn {
   width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink);
   display: inline-flex; align-items: center; justify-content: center; padding: 0; flex: none;

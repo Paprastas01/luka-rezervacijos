@@ -5,6 +5,7 @@
 
   var API = window.LUKA_API;
   var KEY_STORE = 'luka.key';
+  var REST_STORE = 'luka.rest'; // the restaurant shown last, for people who see more than one
 
   var T = {
     appName: 'Luka rezervacijos',
@@ -93,6 +94,10 @@
     removeQ: function (n) { return 'Pašalinti ' + n + '?'; },
     removeText: 'Šio žmogaus telefonas nebematys rezervacijų. Vėliau galite pakviesti iš naujo.',
     removed: 'Pašalinta.',
+    restSwitch: 'Restoranas',
+    inviteRests: 'Restoranai',
+    pickRest: 'Pažymėkite bent vieną restoraną.',
+    restGone: 'Šio restorano nebematote. Rodomas kitas.',
     inviteTitle: 'Pakviesti žmogų',
     inviteName: 'Vardas',
     inviteRole: 'Teisės',
@@ -191,6 +196,7 @@
   var app = document.getElementById('app');
   var state = {
     key: localStorage.getItem(KEY_STORE),
+    rest: localStorage.getItem(REST_STORE) || '',
     start: null,
     tab: 'list',
     date: null,
@@ -238,6 +244,13 @@
   }
   function holds(r) { return HOLDS.indexOf(r.status) !== -1; }
   function isManager() { return state.start.me.role === MANAGER; }
+  function several() { return state.start.restaurants.length > 1; }
+  function restName(id) {
+    var x = state.start.restaurants.filter(function (r) { return r.id === id; })[0];
+    return x ? x.shortName : id;
+  }
+  // With the switcher on screen the restaurant name under the title would repeat it.
+  function restSub() { return several() ? '' : state.start.restaurantName; }
   function dayClosed(date) {
     return state.start.closedWeekdays.indexOf(weekday(date)) !== -1 || state.start.closedDays.indexOf(date) !== -1;
   }
@@ -283,7 +296,7 @@
   }
 
   function call(op, data) {
-    var body = Object.assign({ op: op, k: state.key }, data || {});
+    var body = Object.assign({ op: op, k: state.key }, state.rest ? { r: state.rest } : {}, data || {});
     return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json(); })
       .catch(function () { return { ok: false, reason: 'network' }; })
@@ -292,13 +305,26 @@
           forget();
           renderJoin();
         }
+        // Access to this restaurant was taken away: start again with one this phone may see.
+        if (!res.ok && res.reason === 'rest' && op !== 'start') {
+          setRest('');
+          toast(T.restGone);
+          boot();
+        }
         return res;
       });
+  }
+
+  function setRest(id) {
+    state.rest = id || '';
+    if (id) localStorage.setItem(REST_STORE, id);
+    else localStorage.removeItem(REST_STORE);
   }
 
   function forget() {
     state.key = null;
     state.start = null;
+    setRest('');
     localStorage.removeItem(KEY_STORE);
     saveSwConfig({ key: null });
   }
@@ -386,11 +412,18 @@
 
   // ---------- frame ----------
 
+  function restSwitch() {
+    if (!several() || state.edit) return '';
+    return '<div class="rest-switch" role="group" aria-label="' + esc(T.restSwitch) + '">' + state.start.restaurants.map(function (x) {
+      return '<button type="button" data-act="rest" data-r="' + esc(x.id) + '" aria-pressed="' + (x.id === state.rest) + '">' + esc(x.shortName) + '</button>';
+    }).join('') + '</div>';
+  }
+
   function frame(title, sub, body, tools) {
     var tabs = ['list', 'book', 'remind', 'more'];
     var unsent = state.reminders ? state.reminders.items.filter(function (r) { return !r.reminder; }).length : 0;
     app.innerHTML = '<div class="shell">' +
-      '<header class="top"><div class="top-text"><h1>' + esc(title) + '</h1>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>' +
+      '<header class="top">' + restSwitch() + '<div class="top-text"><h1>' + esc(title) + '</h1>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>' +
       (tools || '') + '</header>' +
       '<main class="content">' + body + '</main></div>' +
       '<nav class="tabbar" aria-label="Skiltys"><div class="tabbar-in">' + tabs.map(function (t) {
@@ -508,7 +541,7 @@
     var body = '<label class="search">' + ICONS.search + '<span class="sr">' + esc(T.searchLabel) + '</span>' +
       '<input type="search" data-act="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="' + esc(T.searchPh) + '" value="' + esc(state.q) + '"></label>' +
       '<div id="list-body">' + (searching() ? foundBody() : dayBody()) + '</div>';
-    frame(dateLong(state.date), state.start.restaurantName, body, dayTools());
+    frame(dateLong(state.date), restSub(), body, dayTools());
   }
 
   // Search results and the day list swap inside #list-body, so typing never loses the keyboard.
@@ -1007,9 +1040,9 @@
       if (!state.people) body += '<div class="card empty">' + esc(T.loading) + '</div>';
       else body += '<div class="list">' + state.people.map(function (p) {
         var meta = p.status === 'pakviestas' ? T.invited(p.codeUntil) : T.role[p.role] + ' · ' + T.active + ' · ' + (p.push ? T.pushOn : T.pushOff);
-        var self = p.id === me.id;
+        if (several()) meta = p.rests.map(restName).join(', ') + ' · ' + meta;
         return '<div class="card person"><div class="who"><div class="name">' + esc(p.name) + '</div><div class="meta">' + esc(meta) + '</div></div>' +
-          (self ? '' : '<button class="btn small danger" data-act="remove" data-id="' + esc(p.id) + '" data-name="' + esc(p.name) + '">' + esc(T.remove) + '</button>') + '</div>';
+          (!p.canRemove ? '' : '<button class="btn small danger" data-act="remove" data-id="' + esc(p.id) + '" data-name="' + esc(p.name) + '">' + esc(T.remove) + '</button>') + '</div>';
       }).join('') + '</div>';
       body += '<div class="section-title">' + esc(T.inviteTitle) + '</div><div class="card" style="padding:4px 14px 14px">';
       if (state.invite) {
@@ -1020,10 +1053,13 @@
       body += '<form data-form="invite"><label class="field"><span>' + esc(T.inviteName) + '</span><input type="text" name="name" maxlength="40" autocomplete="off"></label>' +
         '<label class="field"><span>' + esc(T.inviteRole) + '</span><select name="role"><option value="darbuotojas">' + esc(T.roleStaff) + '</option>' +
         '<option value="vadovas">' + esc(T.roleManager) + '</option></select></label>' +
+        (several() ? '<fieldset class="rests"><legend>' + esc(T.inviteRests) + '</legend>' + state.start.restaurants.map(function (x) {
+          return '<label class="check"><input type="checkbox" name="rests" value="' + esc(x.id) + '"' + (x.id === state.rest ? ' checked' : '') + '><span>' + esc(x.name) + '</span></label>';
+        }).join('') + '</fieldset>' : '') +
         '<button class="btn block" type="submit">' + esc(T.inviteBtn) + '</button></form></div>';
     }
     body += '<p style="margin-top:28px"><button class="btn block danger" data-act="logout">' + esc(T.logout) + '</button></p>';
-    frame(T.moreTitle, state.start.restaurantName, body);
+    frame(T.moreTitle, restSub(), body);
   }
 
   function loadPeople() {
@@ -1182,6 +1218,7 @@
         });
         break;
       case 'share': shareInvite(); break;
+      case 'rest': if (el.dataset.r !== state.rest) switchRest(el.dataset.r); break;
       case 'logout':
         sheet('<h2>' + esc(T.logoutQ) + '</h2><p class="muted">' + esc(T.logoutText) + '</p>' +
           '<div class="row"><button class="btn" data-act="close">' + esc(T.no) + '</button>' +
@@ -1245,10 +1282,12 @@
       submitClose(false, f.querySelector('button[type=submit]'));
     } else if (f.dataset.form === 'invite') {
       var btn = f.querySelector('button');
+      var rests = Array.prototype.map.call(f.querySelectorAll('input[name=rests]:checked'), function (x) { return x.value; });
+      if (several() && !rests.length) { toast(T.pickRest); return; }
       btn.disabled = true;
-      call('invite', { name: f.name.value, role: f.role.value }).then(function (res) {
+      call('invite', { name: f.name.value, role: f.role.value, rests: rests }).then(function (res) {
         btn.disabled = false;
-        if (!res.ok) { toast(res.reason === 'invalid' ? T.badName : res.reason === 'manager' ? T.managerOnly : T.error); return; }
+        if (!res.ok) { toast(res.reason === 'invalid' && res.field === 'rests' ? T.pickRest : res.reason === 'invalid' ? T.badName : res.reason === 'manager' ? T.managerOnly : T.error); return; }
         state.invite = res;
         loadPeople();
         render();
@@ -1274,8 +1313,37 @@
     window.scrollTo(0, 0);
   }
 
+  // Another restaurant: its own settings, list, reminders and booking form.
+  // What was typed into the booking form (guest, phone, notes) is kept.
+  function switchRest(id) {
+    if (state.tab === 'book') keepTyped();
+    var old = state.book;
+    setRest(id);
+    state.edit = null; state.open = null; state.q = ''; state.found = null;
+    state.day = null; state.reminders = null; state.error = '';
+    closeSheet();
+    app.querySelectorAll('[data-act=rest]').forEach(function (b) { b.disabled = true; b.setAttribute('aria-pressed', String(b.dataset.r === id)); });
+    return call('start').then(function (res) {
+      if (!res.ok) { toast(res.reason === 'network' ? T.network : T.error); render(); return; }
+      state.start = res;
+      setRest(res.rest);
+      state.book = null;
+      if (old) {
+        newBooking(old.date);
+        ['people', 'bigPeople', 'name', 'phone', 'consent', 'notes', 'lang', 'langManual'].forEach(function (k) { state.book[k] = old[k]; });
+      }
+      loadReminders();
+      if (state.tab === 'book' && state.book.people) return loadTimes();
+      if (state.tab === 'list') loadDay(state.date);
+      else render();
+    });
+  }
+
   // Opened from a notification, or the service worker says something changed.
   function openFrom(params) {
+    if (params.r && params.r !== state.rest && state.start.restaurants.some(function (x) { return x.id === params.r; })) {
+      return switchRest(params.r).then(function () { openFrom({ view: params.view, date: params.date }); });
+    }
     if (params.view === 'reminders') return switchTab('remind');
     if (params.date) { state.tab = 'list'; state.edit = null; state.q = ''; state.found = null; state.day = null; loadDay(params.date); }
   }
@@ -1311,8 +1379,13 @@
         if (res.reason !== 'auth') app.innerHTML = '<div class="join">' + errorBox(res.reason === 'network' ? T.network : T.error) + '</div>';
         return;
       }
-      state.start = res;
       var q = new URLSearchParams(location.search);
+      if (q.get('r') && q.get('r') !== res.rest && res.restaurants.some(function (x) { return x.id === q.get('r'); })) {
+        setRest(q.get('r'));
+        return boot();
+      }
+      state.start = res;
+      setRest(res.rest);
       state.date = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : res.today;
       // Events already in the inbox are not news for this phone.
       call('inbox', { since: 0 }).then(function (r) {
@@ -1323,7 +1396,7 @@
       loadReminders();
       if (q.get('view') === 'reminders') switchTab('remind');
       else loadDay(state.date);
-      if (q.has('view') || q.has('date')) history.replaceState(null, '', location.pathname);
+      if (q.has('view') || q.has('date') || q.has('r')) history.replaceState(null, '', location.pathname);
     });
   }
 

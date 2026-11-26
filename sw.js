@@ -1,6 +1,6 @@
 // Service worker: keeps the app shell offline and shows notifications.
 // Pushes arrive empty; the worker asks the server what happened (op 'inbox').
-var SHELL = 'luka-shell-v3';
+var SHELL = 'luka-shell-v4';
 var FILES = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'ikonos/ikona-180.png', 'ikonos/ikona-192.png', 'ikonos/ikona-512.png'];
 var CONFIG_URL = new URL('luka-config', self.registration.scope).href;
@@ -74,7 +74,7 @@ self.addEventListener('push', function (e) {
         body: ev.body,
         tag: ev.seq ? 'luka-' + ev.seq : 'luka',
         icon: 'ikonos/ikona-192.png',
-        data: { view: ev.view || '', date: ev.date || '' }
+        data: { view: ev.view || '', date: ev.date || '', r: ev.r || '' }
       });
     })).then(function () { return tellApp({ type: 'changed' }); });
   }));
@@ -84,9 +84,10 @@ self.addEventListener('notificationclick', function (e) {
   e.notification.close();
   var d = e.notification.data || {};
   var q = d.view ? '?view=' + encodeURIComponent(d.view) : d.date ? '?date=' + encodeURIComponent(d.date) : '';
+  if (d.r) q += (q ? '&' : '?') + 'r=' + encodeURIComponent(d.r);
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
     if (list.length) {
-      list[0].postMessage({ type: 'open', view: d.view, date: d.date });
+      list[0].postMessage({ type: 'open', view: d.view, date: d.date, r: d.r });
       return list[0].focus();
     }
     return self.clients.openWindow(new URL(q || './', self.registration.scope).href);
