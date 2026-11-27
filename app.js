@@ -3,6 +3,9 @@
 (function () {
   'use strict';
 
+  // Never inside another site's frame: a page around it could cover the app and steer taps.
+  if (window.top !== window.self) { document.documentElement.hidden = true; return; }
+
   var API = window.LUKA_API;
   var KEY_STORE = 'luka.key';
   var REST_STORE = 'luka.rest'; // the restaurant shown last, for people who see more than one
