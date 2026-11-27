@@ -25,12 +25,39 @@
     joinBtn: 'Prisijungti',
     joinBad: 'Kodas neteisingas arba nebegalioja. Paprašykite vadovo naujo kodo.',
     joinWait: 'Per daug bandymų. Palaukite 15 minučių.',
-    iosTitle: 'Pirma įsidėkite programėlę į pradžios ekraną',
-    iosSteps: ['Apačioje paspauskite „Bendrinti“ (kvadratas su rodykle į viršų).',
-      'Pasirinkite „Į pradžios ekraną“ (Add to Home Screen).',
-      'Atsidarykite „Rezervacijos“ iš pradžios ekrano ir ten įveskite kodą.'],
-    iosWhy: 'Tik taip telefonas rodys pranešimus apie naujas rezervacijas.',
-    iosSkip: 'Tęsti naršyklėje',
+    // Install steps. They stand in for the code field until the app is opened from the home screen,
+    // and they differ by where the page is open, so that they match what the person sees.
+    setupWhy: 'Tik taip telefonas rodys pranešimus apie naujas rezervacijas.',
+    safariTitle: 'Pirma įsidėkite programėlę į pradžios ekraną',
+    safariSteps: function (ico, w) {
+      return ['Naršyklės juostoje paspauskite ' + ico.share + '. Jei jo nematote, paspauskite ' + ico.more + ', tada ' + w.share + '.',
+        'Atsidariusiame sąraše paspauskite ' + ico.add + ' ' + w.add + ' (gali tekti paslinkti žemyn). Tada viršuje paspauskite ' + w.ok + '.',
+        'Tarp telefono programėlių atsiras ženkliukas <b>Rezervacijos</b>. Atidarykite programėlę ten ir įveskite kodą.'];
+    },
+    inappTitle: 'Pirma atidarykite šį puslapį „Safari“ naršyklėje',
+    inappText: 'Dabar puslapis atidarytas kitos programėlės viduje (pavyzdžiui, „Telegram“). Iš čia programėlės įsidėti negalima.',
+    inappSteps: function (ico) {
+      return ['Ekrano apačioje paspauskite ' + ico.compass + '. Jei jo nėra, paspauskite ' + ico.more + ' ir <b>Open in Safari</b> arba <b>Open in browser</b>.',
+        '„Safari“ naršyklėje vėl atsidarys šis puslapis ir rodys, ką daryti toliau.'];
+    },
+    browserText: 'Dabar puslapis atidarytas kitoje naršyklėje. Programėlę įsidėsite tik iš „Safari“.',
+    chromeTitle: 'Pirma atidarykite šį puslapį „Chrome“ naršyklėje',
+    chromeSteps: function (ico) {
+      return ['Viršuje dešinėje paspauskite ' + ico.dots + ' ir <b>Open in Chrome</b> arba <b>Open in browser</b>.',
+        '„Chrome“ naršyklėje vėl atsidarys šis puslapis ir rodys, ką daryti toliau.'];
+    },
+    wordsNote: 'Pavadinimai priklauso nuo telefono kalbos, ženklai visada tie patys.',
+    copyHelp: function (browser, afterSteps) {
+      return (afterSteps ? 'Nepavyksta? ' : '') + 'Nukopijuokite nuorodą ir įklijuokite ją „' + browser + '“ naršyklėje.';
+    },
+    copyLink: 'Kopijuoti nuorodą',
+    copyFail: 'Nukopijuoti nepavyko. Nuorodą matote po mygtuku.',
+    setupSkip: 'Tęsti čia, be pranešimų',
+    setupSkipNote: 'Kodas tinka tik vieną kartą: įvedus jį čia, programėlei reikės naujo kodo.',
+    icoShare: 'kvadratas su rodykle į viršų',
+    icoMore: 'trys taškai',
+    icoAdd: 'kvadratas su pliusu',
+    icoCompass: 'kompasas',
     install: 'Įdiegti programėlę',
     // list
     people: function (n) { return n + ' žm.'; },
@@ -112,8 +139,8 @@
     inviteShare: 'Siųsti kodą',
     inviteCopied: 'Nukopijuota.',
     inviteText: function (code) {
-      return 'Luka rezervacijos. Atsidarykite ' + location.origin + location.pathname +
-        ' telefone, įsidėkite į pradžios ekraną ir įveskite kodą ' + code + '.';
+      return 'Luka rezervacijos. Telefone atsidarykite ' + location.origin + location.pathname +
+        ' ir darykite, ką rodo ekranas. Pabaigoje įveskite kodą ' + code + '.';
     },
     logout: 'Atsijungti šiame telefone',
     logoutQ: 'Atsijungti šiame telefone?',
@@ -215,7 +242,7 @@
     invite: null,
     error: '',
     busy: false,
-    showIosSteps: true,
+    showSetup: true,
     installPrompt: null
   };
 
@@ -281,6 +308,41 @@
   }
   function isIos() {
     return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+  // Where the page is open. Inside another app (Telegram, Instagram) the phone's own
+  // "add to home screen" is missing, so the person has to get to the real browser first.
+  function browserKind() {
+    var ua = navigator.userAgent;
+    if (isIos()) {
+      if (/FBAN|FBAV|Instagram|Line\/|LinkedInApp|Telegram|WhatsApp|Snapchat|TikTok|musical_ly|MicroMessenger/.test(ua)) return 'ios-inapp';
+      if (/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|GSA\/|DuckDuckGo|YaBrowser/.test(ua)) return 'ios-browser';
+      return /Safari\//.test(ua) ? 'ios-safari' : 'ios-inapp';
+    }
+    if (/Android/.test(ua) && /; wv\)/.test(ua)) return 'android-inapp';
+    return 'other';
+  }
+  // Menu names as the iPhone shows them in its own language; English when we are not sure.
+  var IOS_WORDS = {
+    en: { share: 'Share', add: 'Add to Home Screen', ok: 'Add' },
+    es: { share: 'Compartir', add: 'Añadir a pantalla de inicio', ok: 'Añadir' },
+    ru: { share: 'Поделиться', add: 'На экран «Домой»', ok: 'Добавить' }
+  };
+  function phoneLang() {
+    var l = (navigator.language || '').toLowerCase();
+    if (l === 'es' || l === 'es-es') return 'es';
+    var two = l.slice(0, 2);
+    return two === 'ru' || two === 'en' ? two : '';
+  }
+  // A phone button drawn the way it looks on the screen, inline in a sentence.
+  function icon(name, label) {
+    var paths = {
+      share: '<path d="M12 15V3M8 7l4-4 4 4M7 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>',
+      add: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/>',
+      compass: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+      more: '<g fill="currentColor" stroke="none"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></g>',
+      dots: '<g fill="currentColor" stroke="none"><circle cx="12" cy="6" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18" r="1.6"/></g>'
+    };
+    return '<span class="ico" role="img" aria-label="' + esc(label) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg></span>';
   }
   function standalone() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -368,16 +430,39 @@
 
   // ---------- join ----------
 
+  // The install steps for this browser: { title, text, steps, copyFor, note }.
+  function setupGuide(kind) {
+    var ico = { share: icon('share', T.icoShare), more: icon('more', T.icoMore), add: icon('add', T.icoAdd),
+      compass: icon('compass', T.icoCompass), dots: icon('dots', T.icoMore) };
+    var lang = phoneLang();
+    if (kind === 'ios-safari') {
+      var w = IOS_WORDS[lang || 'en'];
+      return { title: T.safariTitle, text: T.setupWhy, note: !lang,
+        steps: T.safariSteps(ico, { share: '<b>' + esc(w.share) + '</b>', add: '<b>' + esc(w.add) + '</b>', ok: '<b>' + esc(w.ok) + '</b>' }) };
+    }
+    if (kind === 'ios-inapp') return { title: T.inappTitle, text: T.inappText, steps: T.inappSteps(ico), copyFor: 'Safari', note: lang !== 'en' };
+    if (kind === 'ios-browser') return { title: T.inappTitle, text: T.browserText, steps: [], copyFor: 'Safari' };
+    return { title: T.chromeTitle, text: T.inappText, steps: T.chromeSteps(ico), copyFor: 'Chrome', note: lang !== 'en' };
+  }
+
   function renderJoin(message) {
-    var iosOutside = isIos() && !standalone() && state.showIosSteps;
+    var kind = browserKind();
+    var setup = kind !== 'other' && !standalone() && state.showSetup;
     var html = '<div class="join">' +
       '<img class="logo" src="ikonos/ikona-192.png" alt="">' +
       '<h1>' + esc(T.joinTitle) + '</h1>';
-    if (iosOutside) {
-      html += '<p class="muted">' + esc(T.iosWhy) + '</p>' +
-        '<div class="card"><p style="margin:16px 16px 0;font-weight:650">' + esc(T.iosTitle) + '</p><ol class="steps">' +
-        T.iosSteps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol></div>' +
-        '<p style="margin-top:20px"><button class="btn block" data-act="ios-skip">' + esc(T.iosSkip) + '</button></p>';
+    if (setup) {
+      var g = setupGuide(kind);
+      html += '<div class="card setup"><h2>' + esc(g.title) + '</h2>' +
+        (g.text ? '<p>' + esc(g.text) + '</p>' : '') +
+        (g.steps.length ? '<ol class="steps">' + g.steps.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol>' : '') +
+        (g.note ? '<p class="muted small">' + esc(T.wordsNote) + '</p>' : '') +
+        (g.copyFor ? '<div class="copy"><p>' + esc(T.copyHelp(g.copyFor, g.steps.length > 0)) + '</p>' +
+          '<button class="btn block" data-act="copy-link">' + esc(T.copyLink) + '</button>' +
+          '<p class="muted small link">' + esc(location.origin + location.pathname) + '</p></div>' : '') +
+        '</div>' +
+        '<p class="skip"><button class="btn-link" data-act="setup-skip">' + esc(T.setupSkip) + '</button></p>' +
+        '<p class="muted small center">' + esc(T.setupSkipNote) + '</p>';
     } else {
       html += '<p class="muted">' + esc(T.joinText) + '</p>' +
         '<form data-form="join">' +
@@ -1142,7 +1227,14 @@
     var act = el.dataset.act;
     var id = el.dataset.id;
     switch (act) {
-      case 'ios-skip': state.showIosSteps = false; renderJoin(); break;
+      case 'setup-skip': state.showSetup = false; renderJoin(); break;
+      case 'copy-link':
+        if (!navigator.clipboard) { toast(T.copyFail); break; }
+        navigator.clipboard.writeText(location.origin + location.pathname).then(function () { toast(T.inviteCopied); }, function (err) {
+          console.warn('copy link: ' + err);
+          toast(T.copyFail);
+        });
+        break;
       case 'install':
         state.installPrompt.prompt();
         state.installPrompt = null;
